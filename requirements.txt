@@ -1,0 +1,7 @@
+TTS
+torch
+librosa
+soundfile
+scipy
+numpy
+jiwer
