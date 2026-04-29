@@ -3,7 +3,7 @@ import torch
 from TTS.api import TTS
 from preprocess import preprocess_audio
 
-def clone_voice(text, speaker_wav, output_path, language="en"):
+def clone_voice(text, speaker_wav, output_path, language="en-in"):
     device = "cpu"
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 
@@ -22,11 +22,15 @@ def clone_voice(text, speaker_wav, output_path, language="en"):
         
 
     tts.tts_to_file(
-        text=text,
-        speaker_wav=clean_wavs,
-        language=language,
-        file_path=output_path
-    )
+    text=text,
+    speaker_wav=clean_wavs,
+    language=language,
+    file_path=output_path,
+    split_sentences=True,
+    temperature=0.7,
+    speed=0.9,
+    repetition_penalty=2.0
+)
 
 
 if __name__ == "__main__":
