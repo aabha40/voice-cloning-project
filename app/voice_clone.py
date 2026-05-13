@@ -1,7 +1,12 @@
 import argparse
 import torch
+import os
+import tempfile
 from TTS.api import TTS
 from preprocess import preprocess_audio
+from flask import Flask, send_from_directory, request, send_file
+
+app = Flask(__name__, static_folder='static')
 
 def clone_voice(text, speaker_wav, output_path, language="en-in"):
     device = "cpu"
@@ -19,27 +24,69 @@ def clone_voice(text, speaker_wav, output_path, language="en-in"):
         clean = "clean.wav"
         preprocess_audio(speaker_wav, clean)
         clean_wavs = [clean]
-        
 
     tts.tts_to_file(
-    text=text,
-    speaker_wav=clean_wavs,
-    language=language,
-    file_path=output_path,
-    split_sentences=True,
-    temperature=0.7,
-    speed=0.9,
-    repetition_penalty=2.0
-)
+        text=text,
+        speaker_wav=clean_wavs,
+        language=language,
+        file_path=output_path,
+        split_sentences=True,
+        temperature=0.7,
+        speed=0.9,
+        repetition_penalty=2.0
+    )
 
+# ── Flask Routes ──────────────────────────────────────────
+
+@app.route('/')
+def index():
+    return send_from_directory('static', 'index.html')
+
+@app.route('/clone', methods=['POST'])
+def clone():
+    try:
+        audio = request.files['audio']
+        text = request.form['text']
+        language = request.form.get('language', 'en-in')
+
+        # Save uploaded audio to a temp file
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_in:
+            audio.save(tmp_in.name)
+            input_path = tmp_in.name
+
+        # Output path
+        output_path = tempfile.mktemp(suffix='.wav')
+
+        # Run voice cloning
+        clone_voice(text, input_path, output_path, language)
+
+        # Return the generated audio
+        return send_file(
+            output_path,
+            mimetype='audio/wav',
+            as_attachment=True,
+            download_name='cloned_voice.wav'
+        )
+    
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+# ── Entry Point ───────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--text", required=True)
-    parser.add_argument("--speaker_wav", required=True)
-    parser.add_argument("--out", default="outputs/cloned.wav")
-    parser.add_argument("--language", default="en")
+    import sys
 
-    args = parser.parse_args()
+    # If arguments passed → run CLI mode (old behavior preserved)
+    if len(sys.argv) > 1:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--text", required=True)
+        parser.add_argument("--speaker_wav", required=True)
+        parser.add_argument("--out", default="outputs/cloned.wav")
+        parser.add_argument("--language", default="en")
+        args = parser.parse_args()
+        clone_voice(args.text, args.speaker_wav, args.out, args.language)
 
-    clone_voice(args.text, args.speaker_wav, args.out, args.language)
+    # No arguments → start Flask web server
+    else:
+        print("Starting VoiceForge web server at http://localhost:5000")
+        app.run(debug=True, port=5000)

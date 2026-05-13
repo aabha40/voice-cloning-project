@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VoiceForge — AI Voice Cloning</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060810;
+      --surface: #0d1117;
+      --surface2: #131820;
+      --border: rgba(255,255,255,0.07);
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --accent3: #ff6b6b;
+      --text: #e8eaf0;
+      --muted: #5a6070;
+      --glow: 0 0 40px rgba(0,229,255,0.15);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Background ─── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .bg-orb {
+      position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0;
+    }
+    .orb1 { width: 600px; height: 600px; background: rgba(0,229,255,0.04); top: -200px; right: -100px; }
+    .orb2 { width: 500px; height: 500px; background: rgba(124,58,237,0.05); bottom: -100px; left: -100px; }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 48px;
+      background: rgba(6,8,16,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #fff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo span { -webkit-text-fill-color: var(--accent); }
+    .nav-badge {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.1em;
+      color: var(--accent); border: 1px solid rgba(0,229,255,0.3);
+      padding: 4px 10px; border-radius: 20px;
+      background: rgba(0,229,255,0.05);
+    }
+
+    /* ─── Layout ─── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    main { padding-top: 100px; }
+
+    /* ─── Hero ─── */
+    .hero {
+      text-align: center; padding: 80px 0 60px;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--accent);
+      background: rgba(0,229,255,0.07); border: 1px solid rgba(0,229,255,0.2);
+      padding: 6px 14px; border-radius: 20px; margin-bottom: 32px;
+    }
+    .hero-tag::before { content: '●'; font-size: 0.5rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 800; line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 1.1rem; color: var(--muted); max-width: 520px;
+      margin: 0 auto 48px; line-height: 1.7; font-weight: 400;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ─── Waveform decoration ─── */
+    .waveform-deco {
+      display: flex; align-items: center; justify-content: center;
+      gap: 3px; height: 40px; margin-bottom: 60px;
+    }
+    .waveform-deco span {
+      display: block; width: 3px; border-radius: 2px;
+      background: var(--accent); opacity: 0.4;
+      animation: wave 1.4s ease-in-out infinite;
+    }
+    .waveform-deco span:nth-child(odd) { background: var(--accent2); }
+    @keyframes wave {
+      0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); }
+    }
+
+    /* ─── Main Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 28px 36px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-header-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #febc2e; }
+    .dot-green { background: #28c840; }
+    .card-title {
+      margin-left: 8px;
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      color: var(--muted); letter-spacing: 0.08em;
+    }
+
+    .card-body { padding: 36px; }
+
+    /* ─── Steps ─── */
+    .steps { display: grid; gap: 28px; }
+
+    .step {
+      display: grid; grid-template-columns: 48px 1fr; gap: 20px; align-items: start;
+    }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--accent);
+      flex-shrink: 0;
+    }
+    .step-content label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* ─── Upload Zone ─── */
+    .upload-zone {
+      border: 2px dashed rgba(0,229,255,0.2);
+      border-radius: 14px; padding: 28px 20px;
+      text-align: center; cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(0,229,255,0.02);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(0,229,255,0.05);
+      box-shadow: var(--glow);
+    }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon {
+      font-size: 2rem; margin-bottom: 8px; display: block;
+    }
+    .upload-zone p {
+      font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--muted);
+    }
+    .upload-zone .file-name {
+      font-size: 0.85rem; color: var(--accent); margin-top: 6px; font-weight: 600;
+    }
+
+    /* ─── Waveform Preview ─── */
+    #waveform-canvas {
+      width: 100%; height: 60px; border-radius: 8px;
+      background: var(--surface2); display: none;
+      margin-top: 12px;
+    }
+
+    /* ─── Text Input ─── */
+    textarea {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text); font-family: 'DM Mono', monospace;
+      font-size: 0.9rem; line-height: 1.6; padding: 16px 18px;
+      resize: vertical; min-height: 110px;
+      outline: none; transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: rgba(0,229,255,0.4); box-shadow: 0 0 0 3px rgba(0,229,255,0.07); }
+    textarea::placeholder { color: var(--muted); }
+    .char-count {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem;
+      color: var(--muted); text-align: right; margin-top: 6px;
+    }
+
+    /* ─── Language Select ─── */
+    select {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text); font-family: 'DM Mono', monospace;
+      font-size: 0.88rem; padding: 14px 18px;
+      outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6070' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: rgba(0,229,255,0.4); }
+    select option { background: var(--surface); }
+
+    /* ─── Divider ─── */
+    .divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    /* ─── Generate Button ─── */
+    .btn-generate {
+      width: 100%; padding: 18px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 14px;
+      color: #fff; font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.05em;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.2s;
+      margin-top: 8px;
+    }
+    .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,229,255,0.25); }
+    .btn-generate:active { transform: translateY(0); }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-generate .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+    /* ─── Progress / Status ─── */
+    .status-bar {
+      display: none; margin-top: 24px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 22px;
+    }
+    .status-bar.visible { display: block; }
+    .status-label {
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      color: var(--accent); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .spinner {
+      width: 12px; height: 12px; border: 2px solid rgba(0,229,255,0.2);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-track {
+      height: 4px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.4s ease;
+    }
+    .status-steps {
+      margin-top: 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .status-step {
+      font-family: 'DM Mono', monospace; font-size: 0.73rem; color: var(--muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-step.done { color: var(--accent); }
+    .status-step.active { color: var(--text); }
+    .status-step-icon { font-size: 0.65rem; }
+
+    /* ─── Output ─── */
+    .output-section {
+      display: none; margin-top: 28px;
+      background: var(--surface2); border: 1px solid rgba(0,229,255,0.15);
+      border-radius: 16px; padding: 28px;
+      box-shadow: 0 0 40px rgba(0,229,255,0.06);
+    }
+    .output-section.visible { display: block; animation: fadeUp 0.4s ease; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+
+    .output-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .output-title {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent);
+    }
+    .output-meta {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted);
+    }
+
+    audio {
+      width: 100%; border-radius: 10px; margin-bottom: 16px;
+      filter: invert(1) hue-rotate(180deg);
+    }
+
+    .output-actions { display: flex; gap: 10px; }
+    .btn-action {
+      flex: 1; padding: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 0.78rem;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-action:hover { border-color: rgba(0,229,255,0.3); color: var(--accent); }
+
+    /* ─── Metrics ─── */
+    .metrics-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      margin-top: 20px;
+    }
+    .metric {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+    .metric-label {
+      font-family: 'DM Mono', monospace; font-size: 0.65rem;
+      color: var(--muted); margin-top: 4px; letter-spacing: 0.05em;
+    }
+
+    /* ─── Info Strip ─── */
+    .info-strip {
+      display: flex; gap: 12px; margin-top: 32px;
+    }
+    .info-chip {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .info-chip-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .info-chip-text { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+    .info-chip-text strong { color: var(--text); display: block; margin-bottom: 2px; font-size: 0.75rem; }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center; padding: 48px 24px;
+      font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      color: var(--muted); border-top: 1px solid var(--border);
+      margin-top: 80px; position: relative; z-index: 1;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ─── Error ─── */
+    .error-box {
+      display: none; margin-top: 16px;
+      background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2);
+      border-radius: 10px; padding: 14px 18px;
+      font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--accent3);
+    }
+    .error-box.visible { display: block; }
+
+    @media (max-width: 640px) {
+      nav { padding: 16px 20px; }
+      .card-body { padding: 20px; }
+      .info-strip { flex-direction: column; }
+      .metrics-row { grid-template-columns: repeat(3,1fr); }
+      h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+
+<nav>
+  <div class="logo">Voice<span>Forge</span></div>
+  <div class="nav-badge">XTTS-v2 · CPU</div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-tag">AI Voice Cloning</div>
+      <h1>Clone any voice<br/>with <em>5 seconds</em> of audio</h1>
+      <p class="hero-sub">Upload a reference audio, type your text, and generate a natural-sounding voice clone powered by Coqui XTTS.</p>
+
+      <!-- Animated waveform -->
+      <div class="waveform-deco" id="heroBars">
+        <!-- bars injected by JS -->
+      </div>
+    </section>
+
+    <!-- Main Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-dot dot-red"></div>
+        <div class="card-header-dot dot-yellow"></div>
+        <div class="card-header-dot dot-green"></div>
+        <span class="card-title">voice_clone.py — voice-cloning-project</span>
+      </div>
+
+      <div class="card-body">
+        <div class="steps">
+
+          <!-- Step 1: Upload -->
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <label>Reference Audio</label>
+              <div class="upload-zone" id="uploadZone">
+                <input type="file" id="audioFile" accept=".wav,.mp3,.flac,.ogg" />
+                <span class="upload-icon">🎙️</span>
+                <p>Drop your audio file here or <strong style="color:var(--accent)">browse</strong></p>
+                <p style="font-size:0.68rem; margin-top:4px;">WAV · MP3 · FLAC — 5 to 30 seconds</p>
+                <div class="file-name" id="fileName"></div>
+              </div>
+              <canvas id="waveform-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Step 2: Text -->
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <label>Text to Synthesize</label>
+              <textarea id="textInput" placeholder="Type the text you want the cloned voice to speak..." maxlength="500"></textarea>
+              <div class="char-count"><span id="charCount">0</span> / 500</div>
+            </div>
+          </div>
+
+          <!-- Step 3: Language -->
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <label>Output Language</label>
+              <select id="langSelect">
+                <option value="en">🇬🇧 English</option>
+                <option value="en-in" selected>🇮🇳 English (India)</option>
+                <option value="hi">🇮🇳 Hindi</option>
+                <option value="es">🇪🇸 Spanish</option>
+                <option value="fr">🇫🇷 French</option>
+                <option value="de">🇩🇪 German</option>
+                <option value="it">🇮🇹 Italian</option>
+                <option value="pt">🇧🇷 Portuguese</option>
+                <option value="pl">🇵🇱 Polish</option>
+                <option value="tr">🇹🇷 Turkish</option>
+                <option value="ru">🇷🇺 Russian</option>
+                <option value="nl">🇳🇱 Dutch</option>
+                <option value="cs">🇨🇿 Czech</option>
+                <option value="ar">🇸🇦 Arabic</option>
+                <option value="zh-cn">🇨🇳 Chinese</option>
+                <option value="ja">🇯🇵 Japanese</option>
+                <option value="ko">🇰🇷 Korean</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="divider" style="margin: 28px 0;"></div>
+
+        <!-- Generate Button -->
+        <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
+          <div class="btn-inner">
+            <span>⚡</span> Generate Cloned Voice
+          </div>
+        </button>
+
+        <!-- Error -->
+        <div class="error-box" id="errorBox"></div>
+
+        <!-- Status -->
+        <div class="status-bar" id="statusBar">
+          <div class="status-label">
+            <div class="spinner"></div>
+            <span id="statusText">Processing audio…</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <div class="status-steps" id="statusSteps">
+            <div class="status-step" id="s1"><span class="status-step-icon">○</span> Loading XTTS-v2 model</div>
+            <div class="status-step" id="s2"><span class="status-step-icon">○</span> Preprocessing reference audio</div>
+            <div class="status-step" id="s3"><span class="status-step-icon">○</span> Extracting voice embedding</div>
+            <div class="status-step" id="s4"><span class="status-step-icon">○</span> Synthesizing speech</div>
+            <div class="status-step" id="s5"><span class="status-step-icon">○</span> Saving output file</div>
+          </div>
+        </div>
+
+        <!-- Output -->
+        <div class="output-section" id="outputSection">
+          <div class="output-header">
+            <div class="output-title">✦ Cloned Voice Output</div>
+            <div class="output-meta" id="outputMeta">output.wav</div>
+          </div>
+          <audio controls id="audioPlayer"></audio>
+          <div class="output-actions">
+            <button class="btn-action" id="downloadBtn">⬇ Download WAV</button>
+            <button class="btn-action" onclick="resetForm()">↺ Clone Again</button>
+          </div>
+          <div class="metrics-row">
+            <div class="metric">
+              <div class="metric-val" id="m1">—</div>
+              <div class="metric-label">Duration (s)</div>
+            </div>
+            <div class="metric">
+              <div class="metric-val" id="m2">—</div>
+              <div class="metric-label">Sample Rate</div>
+            </div>
+            <div class="metric">
+              <div class="metric-val" id="m3">—</div>
+              <div class="metric-label">Words/min</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- card-body -->
+    </div><!-- card -->
+
+    <!-- Info Strip -->
+    <div class="info-strip">
+      <div class="info-chip">
+        <div class="info-chip-icon">🖥️</div>
+        <div class="info-chip-text"><strong>CPU Mode</strong>No GPU required — runs on any machine</div>
+      </div>
+      <div class="info-chip">
+        <div class="info-chip-icon">🌍</div>
+        <div class="info-chip-text"><strong>17 Languages</strong>Multilingual cloning with XTTS-v2</div>
+      </div>
+      <div class="info-chip">
+        <div class="info-chip-icon">⚡</div>
+        <div class="info-chip-text"><strong>5–30s Sample</strong>Short reference audio is enough</div>
+      </div>
+    </div>
+
+  </div><!-- container -->
+</main>
+
+<footer>
+  <p>Built with <a href="https://github.com/coqui-ai/TTS">Coqui XTTS-v2</a> · <a href="https://github.com/aabha40/voice-cloning-project">GitHub</a> · VoiceForge v1.0</p>
+</footer>
+
+<script>
+  // ── Hero waveform bars ──
+  const heroBars = document.getElementById('heroBars');
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('span');
+    const h = 8 + Math.random() * 32;
+    s.style.height = h + 'px';
+    s.style.animationDelay = (Math.random() * 1.4) + 's';
+    s.style.animationDuration = (0.8 + Math.random() * 0.8) + 's';
+    heroBars.appendChild(s);
+  }
+
+  // ── Char count ──
+  const textInput = document.getElementById('textInput');
+  const charCount = document.getElementById('charCount');
+  textInput.addEventListener('input', () => {
+    charCount.textContent = textInput.value.length;
+  });
+
+  // ── Upload zone ──
+  const uploadZone = document.getElementById('uploadZone');
+  const audioFile = document.getElementById('audioFile');
+  const fileName = document.getElementById('fileName');
+  const canvas = document.getElementById('waveform-canvas');
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  audioFile.addEventListener('change', () => { if (audioFile.files.length) handleFile(audioFile.files[0]); });
+
+  function handleFile(file) {
+    fileName.textContent = '✓ ' + file.name;
+    drawWaveform(file);
+  }
+
+  function drawWaveform(file) {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const buf = await ctx.decodeAudioData(e.target.result);
+        canvas.style.display = 'block';
+        const c = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth * 2;
+        canvas.height = 120;
+        const data = buf.getChannelData(0);
+        const step = Math.ceil(data.length / (canvas.width / 2));
+        const amp = canvas.height / 2;
+        c.clearRect(0, 0, canvas.width, canvas.height);
+        const grad = c.createLinearGradient(0, 0, canvas.width, 0);
+        grad.addColorStop(0, '#00e5ff');
+        grad.addColorStop(1, '#7c3aed');
+        c.strokeStyle = grad;
+        c.lineWidth = 1.5;
+        c.beginPath();
+        for (let i = 0; i < canvas.width / 2; i++) {
+          const s = data.slice(i * step, (i + 1) * step);
+          const max = Math.max(...s.map(Math.abs));
+          const x = i * 2;
+          c.moveTo(x, amp - max * amp * 0.9);
+          c.lineTo(x, amp + max * amp * 0.9);
+        }
+        c.stroke();
+      } catch(err) { /* skip if decode fails */ }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ── Generation simulation (replace with real fetch to Flask API) ──
+  function startGeneration() {
+    const file = audioFile.files[0];
+    const text = textInput.value.trim();
+
+    document.getElementById('errorBox').classList.remove('visible');
+
+    if (!file) return showError('Please upload a reference audio file.');
+    if (!text) return showError('Please enter the text to synthesize.');
+    if (text.length < 3) return showError('Text is too short.');
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    document.getElementById('statusBar').classList.add('visible');
+    document.getElementById('outputSection').classList.remove('visible');
+
+    
+
+   
+    const formData = new FormData();
+    formData.append('audio', file);
+    formData.append('text', text);
+    formData.append('language', document.getElementById('langSelect').value);
+
+    fetch('/clone', { method: 'POST', body: formData })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        document.getElementById('audioPlayer').src = url;
+        document.getElementById('downloadBtn').onclick = () => {
+          const a = document.createElement('a'); a.href = url;
+          a.download = 'cloned_voice.wav'; a.click();
+        };
+        showOutput(file, text);
+      })
+      .catch(err => { btn.disabled = false; showError('Server error: ' + err.message); });
+    
+  }
+
+  function showOutput(file, text) {
+    document.getElementById('statusBar').classList.remove('visible');
+    const out = document.getElementById('outputSection');
+    out.classList.add('visible');
+
+    const words = text.split(' ').length;
+    const dur = (3 + words * 0.4).toFixed(1);
+    document.getElementById('m1').textContent = dur;
+    document.getElementById('m2').textContent = '22k';
+    document.getElementById('m3').textContent = Math.round(words / (dur / 60));
+    document.getElementById('outputMeta').textContent =
+      new Date().toLocaleTimeString() + ' · cloned_voice.wav';
+
+    // Demo: use uploaded file as audio preview (replace with actual output URL)
+    const url = URL.createObjectURL(file);
+    document.getElementById('audioPlayer').src = url;
+    document.getElementById('downloadBtn').onclick = () => {
+      const a = document.createElement('a'); a.href = url;
+      a.download = 'cloned_voice.wav'; a.click();
+    };
+
+    document.getElementById('generateBtn').disabled = false;
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.classList.add('visible');
+    document.getElementById('statusBar').classList.remove('visible');
+    document.getElementById('generateBtn').disabled = false;
+  }
+
+  function resetForm() {
+    document.getElementById('outputSection').classList.remove('visible');
+    document.getElementById('statusBar').classList.remove('visible');
+    document.getElementById('errorBox').classList.remove('visible');
+    audioFile.value = '';
+    fileName.textContent = '';
+    canvas.style.display = 'none';
+    textInput.value = '';
+    charCount.textContent = '0';
+    document.getElementById('generateBtn').disabled = false;
+    // Reset step indicators
+    ['s1','s2','s3','s4','s5'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('done','active');
+      el.querySelector('.status-step-icon').textContent = '○';
+    });
+    document.getElementById('progressFill').style.width = '0%';
+  }
+</script>
+</body>
+</html>
