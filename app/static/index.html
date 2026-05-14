@@ -627,68 +627,68 @@
     reader.readAsArrayBuffer(file);
   }
 
-  // ── Generation simulation (replace with real fetch to Flask API) ──
+  
   function startGeneration() {
-    const file = audioFile.files[0];
-    const text = textInput.value.trim();
+  const file = audioFile.files[0];
+  const text = textInput.value.trim();
 
-    document.getElementById('errorBox').classList.remove('visible');
+  document.getElementById('errorBox').classList.remove('visible');
 
-    if (!file) return showError('Please upload a reference audio file.');
-    if (!text) return showError('Please enter the text to synthesize.');
-    if (text.length < 3) return showError('Text is too short.');
+  if (!file) return showError('Please upload a reference audio file.');
+  if (!text) return showError('Please enter the text to synthesize.');
+  if (text.length < 3) return showError('Text is too short.');
 
-    const btn = document.getElementById('generateBtn');
-    btn.disabled = true;
-    document.getElementById('statusBar').classList.add('visible');
-    document.getElementById('outputSection').classList.remove('visible');
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  document.getElementById('statusBar').classList.add('visible');
+  document.getElementById('outputSection').classList.remove('visible');
+  document.getElementById('statusText').textContent = 'Cloning voice… this may take 1–2 mins on CPU';
+  document.getElementById('progressFill').style.width = '30%';
 
-    
+  const formData = new FormData();
+  formData.append('audio', file);
+  formData.append('text', text);
+  formData.append('language', document.getElementById('langSelect').value);
 
-   
-    const formData = new FormData();
-    formData.append('audio', file);
-    formData.append('text', text);
-    formData.append('language', document.getElementById('langSelect').value);
+  fetch('/clone', { method: 'POST', body: formData })
+    .then(r => {
+      if (!r.ok) return r.json().then(e => { throw new Error(e.error || 'Server error'); });
+      return r.blob();
+    })
+    .then(blob => {
+      document.getElementById('progressFill').style.width = '100%';
+      const url = URL.createObjectURL(blob);              // ← real cloned audio
+      document.getElementById('audioPlayer').src = url;
+      document.getElementById('downloadBtn').onclick = () => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cloned_voice.wav';
+        a.click();
+      };
+      showOutput(text);
+    })
+    .catch(err => {
+      btn.disabled = false;
+      document.getElementById('statusBar').classList.remove('visible');
+      showError('Error: ' + err.message);
+    });
+}
 
-    fetch('/clone', { method: 'POST', body: formData })
-      .then(r => r.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        document.getElementById('audioPlayer').src = url;
-        document.getElementById('downloadBtn').onclick = () => {
-          const a = document.createElement('a'); a.href = url;
-          a.download = 'cloned_voice.wav'; a.click();
-        };
-        showOutput(file, text);
-      })
-      .catch(err => { btn.disabled = false; showError('Server error: ' + err.message); });
-    
-  }
+  function showOutput(text) {
+  document.getElementById('statusBar').classList.remove('visible');
+  const out = document.getElementById('outputSection');
+  out.classList.add('visible');
 
-  function showOutput(file, text) {
-    document.getElementById('statusBar').classList.remove('visible');
-    const out = document.getElementById('outputSection');
-    out.classList.add('visible');
+  const words = text.split(' ').length;
+  const dur = (3 + words * 0.4).toFixed(1);
+  document.getElementById('m1').textContent = dur;
+  document.getElementById('m2').textContent = '22k';
+  document.getElementById('m3').textContent = Math.round(words / (dur / 60));
+  document.getElementById('outputMeta').textContent =
+    new Date().toLocaleTimeString() + ' · cloned_voice.wav';
 
-    const words = text.split(' ').length;
-    const dur = (3 + words * 0.4).toFixed(1);
-    document.getElementById('m1').textContent = dur;
-    document.getElementById('m2').textContent = '22k';
-    document.getElementById('m3').textContent = Math.round(words / (dur / 60));
-    document.getElementById('outputMeta').textContent =
-      new Date().toLocaleTimeString() + ' · cloned_voice.wav';
-
-    // Demo: use uploaded file as audio preview (replace with actual output URL)
-    const url = URL.createObjectURL(file);
-    document.getElementById('audioPlayer').src = url;
-    document.getElementById('downloadBtn').onclick = () => {
-      const a = document.createElement('a'); a.href = url;
-      a.download = 'cloned_voice.wav'; a.click();
-    };
-
-    document.getElementById('generateBtn').disabled = false;
-  }
+  document.getElementById('generateBtn').disabled = false;
+}
 
   function showError(msg) {
     const box = document.getElementById('errorBox');

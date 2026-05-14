@@ -1,6 +1,7 @@
 import argparse
 import torch
 import os
+import sys
 import tempfile
 from TTS.api import TTS
 from preprocess import preprocess_audio
@@ -8,11 +9,15 @@ from flask import Flask, send_from_directory, request, send_file
 
 app = Flask(__name__, static_folder='static')
 
-def clone_voice(text, speaker_wav, output_path, language="en-in"):
-    device = "cpu"
-    tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+# Load model ONCE at startup (not on every request)
+print("Loading XTTS-v2 model...")
+tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+print("Model loaded!")
 
-    # support multiple files
+def clone_voice(text, speaker_wav, output_path, language="en"):
+    device = "cpu"
+
+    # Support multiple files
     if "," in speaker_wav:
         wavs = speaker_wav.split(",")
         clean_wavs = []
@@ -21,7 +26,7 @@ def clone_voice(text, speaker_wav, output_path, language="en-in"):
             preprocess_audio(w.strip(), clean)
             clean_wavs.append(clean)
     else:
-        clean = "clean.wav"
+        clean = "clean_input.wav"
         preprocess_audio(speaker_wav, clean)
         clean_wavs = [clean]
 
@@ -31,12 +36,13 @@ def clone_voice(text, speaker_wav, output_path, language="en-in"):
         language=language,
         file_path=output_path,
         split_sentences=True,
-        temperature=0.7,
-        speed=0.9,
-        repetition_penalty=2.0
+        # ── Better cloning settings ──
+        temperature=0.65,        # lower = more stable/accurate voice match
+        speed=1.0,               # keep natural speed
+        repetition_penalty=5.0, # reduce repetition artifacts
+        top_k=50,
+        top_p=0.85,
     )
-
-# ── Flask Routes ──────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -47,36 +53,32 @@ def clone():
     try:
         audio = request.files['audio']
         text = request.form['text']
-        language = request.form.get('language', 'en-in')
+        language = request.form.get('language', 'en')
 
-        # Save uploaded audio to a temp file
+        # Fix language code — XTTS doesn't support 'en-in', use 'en'
+        if '-' in language:
+            language = language.split('-')[0]
+
+        # Save uploaded audio
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_in:
             audio.save(tmp_in.name)
             input_path = tmp_in.name
 
-        # Output path
         output_path = tempfile.mktemp(suffix='.wav')
 
-        # Run voice cloning
         clone_voice(text, input_path, output_path, language)
 
-        # Return the generated audio
         return send_file(
             output_path,
             mimetype='audio/wav',
             as_attachment=True,
             download_name='cloned_voice.wav'
         )
-    
+
     except Exception as e:
         return {'error': str(e)}, 500
 
-# ── Entry Point ───────────────────────────────────────────
-
 if __name__ == "__main__":
-    import sys
-
-    # If arguments passed → run CLI mode (old behavior preserved)
     if len(sys.argv) > 1:
         parser = argparse.ArgumentParser()
         parser.add_argument("--text", required=True)
@@ -85,8 +87,6 @@ if __name__ == "__main__":
         parser.add_argument("--language", default="en")
         args = parser.parse_args()
         clone_voice(args.text, args.speaker_wav, args.out, args.language)
-
-    # No arguments → start Flask web server
     else:
-        print("Starting VoiceForge web server at http://localhost:5000")
-        app.run(debug=True, port=5000)
+        print("Starting VoiceForge at http://localhost:5000")
+        app.run(debug=False, port=5000)
