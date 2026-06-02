@@ -1,4 +1,5 @@
 # 🎙️ VoiceForge — AI Voice Cloning System
+*Developed jointly by Aabha Shukla and Prachi Jha during a 6-month Internship at CDAC Pune.*
 
 > **Zero-shot voice cloning from just 5–30 seconds of audio.**
 > No GPU required · 17 languages · Browser-based · CPU-only inference
@@ -13,11 +14,19 @@
 
 ## 👥 Authors
 
-| Name | Email | Primary Contribution |
-|------|-------|---------------------|
-| **Aabha Shukla** | aabhasiddhishukla@gmail.com | Model integration, Flask backend, audio preprocessing |
-| **Prachi Jha** | prachijhaa.2901@gmail.com | Evaluation pipeline, WER analysis, frontend & documentation |
+| Name | Role |
+|--------|--------|
+| Aabha Shukla | Co-Author & Developer |
+| Prachi Jha | Co-Author & Developer |
 
+### Shared Contributions
+- Voice cloning system development using Coqui XTTS-v2
+- Flask-based application development
+- Audio preprocessing and testing
+- Evaluation pipeline and result analysis
+- Documentation and research report preparation
+- GitHub repository management and CI integration
+- Project presentation and deployment
 *6-Month Deep Learning Internship — CDAC Pune, 2025–26*
 
 ---
