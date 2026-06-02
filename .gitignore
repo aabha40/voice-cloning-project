@@ -1,7 +1,58 @@
-env/
-.venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Model weights (too large for GitHub)
+*.pth
+*.pt
+*.ckpt
+pretrained_models/
+tts_models/
+
+# Audio outputs (generated files)
 outputs/
+evaluation/outputs/
 *.wav
+*.mp3
+*.flac
+!samples/sampleA.wav
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb
+
+# Temp files
+tmp/
+temp/
