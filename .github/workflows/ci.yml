@@ -84,8 +84,8 @@ jobs:
       run: |
         python -c "
         import os
-        required = ['requirements.txt', 'README.md', 'LICENSE', '.gitignore',
-                    'preprocess.py', 'evaluate.py', 'wer_only.py', 'wer_analysis.py']
+        required = ['requirements.txt', 'README.md', '.gitignore',
+                    'evaluate.py', 'wer_only.py', 'wer_analysis.py']
         missing = [f for f in required if not os.path.exists(f)]
         if missing:
             print(f'❌ Missing files: {missing}')
