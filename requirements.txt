@@ -1,7 +1,31 @@
-TTS
-torch
-librosa
-soundfile
-scipy
-numpy
-jiwer
+# VoiceForge — Voice Cloning Project
+# Authors: Aabha Shukla, Prachi Jha
+# CDAC Pune Internship 2025-26
+
+# Core ML framework
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Voice cloning model
+TTS>=0.22.0
+
+# Audio processing
+librosa>=0.10.0
+soundfile>=0.12.1
+scipy>=1.11.0
+numpy>=1.24.0
+
+# Web framework
+flask>=3.0.0
+
+# Evaluation — ASR
+openai-whisper>=20231117
+
+# Evaluation — Speaker verification (optional)
+speechbrain>=0.5.16
+
+# Evaluation — WER computation
+jiwer>=3.0.0
+
+# Utilities
+pathlib2>=2.3.7
