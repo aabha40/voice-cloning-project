@@ -27,7 +27,6 @@
 - Documentation and research report preparation
 - GitHub repository management and CI integration
 - Project presentation and deployment
-*6-Month Deep Learning Internship — CDAC Pune, 2025–26*
 
 ---
 
